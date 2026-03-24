@@ -295,6 +295,17 @@ def format_answer_value(detail, answer_value):
     return str(answer_value)
 
 
+def get_question_type_label(qsn_type):
+    """返回题型中文标签"""
+    mapping = {
+        1: '单选题',
+        2: '多选题',
+        3: '判断题',
+        6: '填空题',
+    }
+    return mapping.get(qsn_type)
+
+
 def write_text_output(data, text_path, include_answers=False):
     """将JSON题目数据写入文本文件"""
     with open(text_path, 'w', encoding='utf-8') as out_f:
@@ -311,8 +322,11 @@ def write_text_output(data, text_path, include_answers=False):
             qsn_type = detail.get('qsnType')
             title = clean_html(detail.get('titleText', ''))
             question_num = idx + 1
+            question_type_label = get_question_type_label(qsn_type)
 
             out_f.write(f"题目 {question_num}: {title}\n")
+            if question_type_label:
+                out_f.write(f"  ({question_type_label})\n")
 
             if qsn_type in [1, 2]:
                 options = detail.get('options', [])
@@ -320,15 +334,7 @@ def write_text_output(data, text_path, include_answers=False):
                     content = clean_html(opt.get('optionContent', ''))
                     out_f.write(f"  {chr(65 + opt_idx)}. {content}\n")
 
-            elif qsn_type == 6:
-                blanks = detail.get('blanks', [])
-                if blanks:
-                    out_f.write("  (填空题)\n")
-
-            elif qsn_type == 3:
-                out_f.write("  (判断题)\n")
-
-            else:
+            elif qsn_type not in [3, 6]:
                 out_f.write(f"  (未知题型: {qsn_type})\n")
 
             if include_answers:

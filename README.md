@@ -53,7 +53,7 @@ python3 eduplus_homework_scraper_cli.py --config /path/to/config.json --session 
 
 运行后会自动生成：
 - `作业题目`：原始 JSON
-- `输出结果`：整理后的 TXT
+- `输出结果`：整理后的 TXT，会标注题型（如 `单选题`、`多选题`、`判断题`、`填空题`）
 - `输出结果/*_带答案.txt`：带答案版本，会区分 `用户答案`、`正确答案`、`判题结果/得分`（前提是接口返回了这些字段）
 
 course_id 获取方式见：https://www.52pojie.cn/thread-2040508-1-1.html
