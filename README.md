@@ -1,8 +1,58 @@
 # u+平台作业爬取
 从在线教育平台 EDUPLUS （u+）爬取课程作业信息，并将其转换为易于阅读和处理的格式
 
-1.py是硬编码格式  使用方法：  在代码中修改配置文件（无hm_lvt留空） 
-2.py是接受参数模式 使用方法 ： python3 路径/2.py --session "" --hm_lvt "" --course_id ""（无hm_lvt留空） 
-eduplus_homework_tool.exe 方便在没有python环境使用 使用方法 cmd中打开 ： 路径/eduplus_homework_tool.exe --session "" --hm_lvt "" --course_id ""（无hm_lvt留空） 
+现在推荐使用外置 `JSON` 配置，不需要再把 Cookie 写进代码里。
 
-course_id获取方式见https://www.52pojie.cn/thread-2040508-1-1.html
+## 配置文件
+
+先在脚本同目录新建 `config.json`，可直接参考 [`config.json.example`](./config.json.example)：
+
+```json
+{
+  "session": "你的SESSION",
+  "hm_lvt": "",
+  "course_id": "你的课程ID"
+}
+```
+
+说明：
+- `hm_lvt` 没有就留空字符串
+- `config.json` 已加入 `.gitignore`，避免误提交真实 Cookie
+
+## 运行方式
+
+### eduplus_homework_scraper.py
+
+纯配置文件模式，默认读取脚本同目录下的 `config.json`：
+
+```bash
+python3 eduplus_homework_scraper.py
+```
+
+### eduplus_homework_scraper_cli.py
+
+配置文件 + 命令行覆盖模式，也会默认读取脚本同目录下的 `config.json`：
+
+```bash
+python3 eduplus_homework_scraper_cli.py
+```
+
+如果配置文件不在默认位置，可以手动指定：
+
+```bash
+python3 eduplus_homework_scraper_cli.py --config /path/to/config.json
+```
+
+如果你还想临时覆盖 JSON 里的值，也可以继续传参数：
+
+```bash
+python3 eduplus_homework_scraper_cli.py --config /path/to/config.json --session "新的SESSION" --hm_lvt "" --course_id "新的课程ID"
+```
+
+## 输出结果
+
+运行后会自动生成：
+- `作业题目`：原始 JSON
+- `输出结果`：整理后的 TXT
+
+course_id 获取方式见：https://www.52pojie.cn/thread-2040508-1-1.html
