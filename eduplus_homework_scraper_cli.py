@@ -235,57 +235,140 @@ def process_homework(homework, output_dir, cookies):
     return None
 
 
+def split_answer_tokens(answer):
+    """将答案字符串拆分为可展示的标记列表"""
+    if answer is None:
+        return []
+
+    if isinstance(answer, list):
+        return [str(item).strip() for item in answer if str(item).strip()]
+
+    answer_text = str(answer).strip()
+    if not answer_text:
+        return []
+
+    if ',' in answer_text:
+        return [token.strip() for token in answer_text.split(',') if token.strip()]
+
+    if re.fullmatch(r'[A-Za-z]+', answer_text):
+        return list(answer_text.upper())
+
+    return [answer_text]
+
+
+def format_answer_value(detail, answer_value):
+    """根据题型格式化答案文本"""
+    if answer_value in (None, ""):
+        return "(未提供)"
+
+    qsn_type = detail.get('qsnType')
+    if qsn_type == 3:
+        mapping = {
+            'true': '正确',
+            'false': '错误',
+        }
+        return mapping.get(str(answer_value).strip().lower(), str(answer_value))
+
+    if qsn_type in [1, 2]:
+        option_map = {}
+        for opt in detail.get('options', []):
+            option_id = str(opt.get('id', '')).strip().upper()
+            option_content = clean_html(opt.get('optionContent', ''))
+            if option_id:
+                option_map[option_id] = option_content
+
+        formatted_options = []
+        for token in split_answer_tokens(answer_value):
+            option_id = token.upper()
+            option_content = option_map.get(option_id)
+            if option_content:
+                formatted_options.append(f"{option_id}. {option_content}")
+            else:
+                formatted_options.append(token)
+
+        return "；".join(formatted_options) if formatted_options else str(answer_value)
+
+    if qsn_type == 6:
+        tokens = split_answer_tokens(answer_value)
+        return "；".join(tokens) if tokens else str(answer_value)
+
+    return str(answer_value)
+
+
+def write_text_output(data, text_path, include_answers=False):
+    """将JSON题目数据写入文本文件"""
+    with open(text_path, 'w', encoding='utf-8') as out_f:
+        homework_name = data.get('homework_name', '未知作业')
+        out_f.write(f"作业名称: {homework_name}\n")
+        out_f.write(f"题目数量: {data.get('question_count', 0)}\n")
+        out_f.write(f"导出时间: {data.get('timestamp', '')}\n")
+        if include_answers:
+            out_f.write("导出类型: 带答案版本\n")
+        out_f.write("=" * 60 + "\n\n")
+
+        for idx, question in enumerate(data.get('questions', [])):
+            detail = question.get('detail', {})
+            qsn_type = detail.get('qsnType')
+            title = clean_html(detail.get('titleText', ''))
+            question_num = idx + 1
+
+            out_f.write(f"题目 {question_num}: {title}\n")
+
+            if qsn_type in [1, 2]:
+                options = detail.get('options', [])
+                for opt_idx, opt in enumerate(options):
+                    content = clean_html(opt.get('optionContent', ''))
+                    out_f.write(f"  {chr(65 + opt_idx)}. {content}\n")
+
+            elif qsn_type == 6:
+                blanks = detail.get('blanks', [])
+                if blanks:
+                    out_f.write("  (填空题)\n")
+
+            elif qsn_type == 3:
+                out_f.write("  (判断题)\n")
+
+            else:
+                out_f.write(f"  (未知题型: {qsn_type})\n")
+
+            if include_answers:
+                user_answer = detail.get('userAnswer')
+                if user_answer not in (None, ""):
+                    out_f.write(f"  用户答案: {format_answer_value(detail, user_answer)}\n")
+                else:
+                    out_f.write("  用户答案: (未作答)\n")
+
+                correct_answer = detail.get('answer')
+                if correct_answer not in (None, ""):
+                    out_f.write(f"  正确答案: {format_answer_value(detail, correct_answer)}\n")
+
+                if 'isCorrect' in detail:
+                    out_f.write(f"  判题结果: {'正确' if detail.get('isCorrect') == 1 else '错误'}\n")
+
+                score = detail.get('userScore', question.get('userScore'))
+                if score is not None:
+                    out_f.write(f"  得分: {score}\n")
+
+            out_f.write("\n")
+
+
 def convert_to_text(json_path, output_dir):
     """将JSON文件转换为文本格式"""
     try:
         with open(json_path, 'r', encoding='utf-8') as f:
             data = json.load(f)
 
-        # 创建文本文件路径
         base_name = os.path.splitext(os.path.basename(json_path))[0]
         text_filename = f"{base_name}.txt"
         text_path = os.path.join(output_dir, text_filename)
+        answer_text_filename = f"{base_name}_带答案.txt"
+        answer_text_path = os.path.join(output_dir, answer_text_filename)
 
-        with open(text_path, 'w', encoding='utf-8') as out_f:
-            # 写入作业标题
-            homework_name = data.get('homework_name', '未知作业')
-            out_f.write(f"作业名称: {homework_name}\n")
-            out_f.write(f"题目数量: {data.get('question_count', 0)}\n")
-            out_f.write(f"导出时间: {data.get('timestamp', '')}\n")
-            out_f.write("=" * 60 + "\n\n")
+        write_text_output(data, text_path, include_answers=False)
+        write_text_output(data, answer_text_path, include_answers=True)
 
-            # 遍历所有题目
-            for idx, question in enumerate(data.get('questions', [])):
-                detail = question.get('detail', {})
-                qsn_type = detail.get('qsnType')
-                title = clean_html(detail.get('titleText', ''))
-                question_num = idx + 1
-
-                # 写入题目编号和内容
-                out_f.write(f"题目 {question_num}: {title}\n")
-
-                # 处理不同类型的题目
-                if qsn_type in [1, 2]:  # 选择题
-                    options = detail.get('options', [])
-                    for opt_idx, opt in enumerate(options):
-                        opt_id = opt.get('id', '')
-                        content = clean_html(opt.get('optionContent', ''))
-                        out_f.write(f"  {chr(65 + opt_idx)}. {content}\n")
-
-                elif qsn_type == 6:  # 填空题
-                    blanks = detail.get('blanks', [])
-                    if blanks:
-                        out_f.write("  (填空题)\n")
-
-                elif qsn_type == 3:  # 判断题
-                    out_f.write("  (判断题)\n")
-
-                else:  # 未知题型
-                    out_f.write(f"  (未知题型: {qsn_type})\n")
-
-                out_f.write("\n")  # 题目间空行
-
-            print(f"已创建文本文件: {text_path}")
+        print(f"已创建文本文件: {text_path}")
+        print(f"已创建带答案文本文件: {answer_text_path}")
 
         return text_path
 
