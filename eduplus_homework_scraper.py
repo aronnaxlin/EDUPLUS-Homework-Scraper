@@ -378,10 +378,15 @@ def convert_to_text(json_path, output_dir):
             data = json.load(f)
 
         base_name = os.path.splitext(os.path.basename(json_path))[0]
+        plain_output_dir = os.path.join(output_dir, "不带答案")
+        answer_output_dir = os.path.join(output_dir, "带答案")
+        os.makedirs(plain_output_dir, exist_ok=True)
+        os.makedirs(answer_output_dir, exist_ok=True)
+
         text_filename = f"{base_name}.txt"
-        text_path = os.path.join(output_dir, text_filename)
+        text_path = os.path.join(plain_output_dir, text_filename)
         answer_text_filename = f"{base_name}_带答案.txt"
-        answer_text_path = os.path.join(output_dir, answer_text_filename)
+        answer_text_path = os.path.join(answer_output_dir, answer_text_filename)
 
         write_text_output(data, text_path, include_answers=False)
         write_text_output(data, answer_text_path, include_answers=True)
@@ -458,6 +463,8 @@ def main():
     print(f"所有处理完成! 共处理 {len(json_files)} 个作业")
     print(f"JSON文件目录: {json_dir}")
     print(f"文本文件目录: {text_dir}")
+    print(f"不带答案文本目录: {os.path.join(text_dir, '不带答案')}")
+    print(f"带答案文本目录: {os.path.join(text_dir, '带答案')}")
     print("=" * 60)
 
 
